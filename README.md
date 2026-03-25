@@ -101,14 +101,14 @@ Example aggregate scores from the notebook’s labeled rubric: **relevance** hig
 
 ### RAGAS (OpenRouter judge LLM + same embeddings)
 
-Reported in `research/evaluation.ipynb` (illustrative run):
+Aggregate scores from `research/evaluation.ipynb` (`results_local` / `results_open` after `ragas.evaluate`). **Latency** is the mean of per-question **LLM generation time** (seconds) for the same 10 runs, taken from `local_latency` / `openrouter_latency` in `research/results.json` (recorded in `research/trials.ipynb` when answers were produced—not a RAGAS metric).
 
-| Setup | Faithfulness | Answer relevancy | Context precision | Context recall |
-|-------|--------------|------------------|-------------------|----------------|
-| Local answers (`phi3`) | 0.72 | 0.67 | 0.98 | 0.92 |
-| OpenRouter answers | 0.78 | 0.69 | 1.00 | 0.88 |
+| Setup | Faithfulness | Answer relevancy | Context precision | Context recall | Avg. latency (s) |
+|-------|--------------|------------------|-------------------|----------------|------------------|
+| Local answers (Ollama `phi3`) | 0.7233 | 0.6729 | 0.9833 | 0.9226 | **9.23** |
+| OpenRouter answers (`meta-llama/llama-3.1-8b-instruct`) | 0.7750 | 0.6928 | 1.0000 | 0.8750 | **3.11** |
 
-Interpretation: **retrieval** is strong (high precision/recall); **faithfulness** and **relevancy** benefit from careful prompts and, where needed, chunk quality improvements.
+Interpretation: **retrieval** is strong (high precision/recall); **faithfulness** and **relevancy** benefit from careful prompts and, where needed, chunk quality improvements. **OpenRouter** is much lower-latency on average in this setup; local **phi3** is slower but avoids cloud LLM calls. Per-question faithfulness, relevancy, precision, recall, and both latencies are also compared side-by-side in the notebook’s `df_compare` table.
 
 ---
 
@@ -213,7 +213,7 @@ python app.py
 
 Open **http://127.0.0.1:5000** in a browser. Submit a question such as:
 
-*“What is the pricing structure used by Indecimal?”*
+*“what is the pricing package of Indecimal?”*
 
 (The answer will only reflect content present in your indexed PDFs.)
 
