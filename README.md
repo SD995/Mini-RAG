@@ -213,7 +213,7 @@ python app.py
 
 Open **http://127.0.0.1:5000** in a browser. Submit a question such as:
 
-*“What factors affect construction project delays?”*
+*“What is the pricing structure used by Indecimal?”*
 
 (The answer will only reflect content present in your indexed PDFs.)
 
