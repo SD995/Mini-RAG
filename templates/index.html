@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RAG Chatbot</title>
+
+    <!-- Bootstrap + JQuery -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css">
+
+    <!-- Your CSS -->
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css')}}"/>
+</head>
+
+<body>
+<div class="container-fluid h-100">
+    <div class="row justify-content-center h-100">       
+        <div class="col-md-8 col-xl-6 chat">
+            <div class="card">
+
+                <!-- HEADER -->
+                <div class="card-header msg_head">
+                    <div class="d-flex bd-highlight">
+                        <div class="img_cont">
+                            <!-- ✅ NEW AI LOGO -->
+                            <img src="https://cdn-icons-png.flaticon.com/512/4712/4712109.png"
+                                 class="rounded-circle user_img">
+                            <span class="online_icon"></span>
+                        </div>
+                        <div class="user_info">
+                            <span>RAG Chatbot</span>
+                            <p>Ask anything from your documents</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CHAT BODY -->
+                <div id="messageFormeight" class="card-body msg_card_body"></div>
+
+                <!-- INPUT -->
+                <div class="card-footer">
+                    <form id="messageArea" class="input-group">
+                        <input type="text" id="text" name="msg"
+                               placeholder="Ask your question..."
+                               autocomplete="off"
+                               class="form-control type_msg" required/>
+                        <div class="input-group-append">
+                            <button type="submit" id="send" class="input-group-text send_btn">
+                                <i class="fas fa-location-arrow"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $("#messageArea").on("submit", function(event) {
+        event.preventDefault();
+
+        const date = new Date();
+        const time = date.getHours() + ":" + date.getMinutes();
+        let userText = $("#text").val();
+
+        let userHTML = `
+            <div class="d-flex justify-content-end mb-4">
+                <div class="msg_cotainer_send">
+                    ${userText}
+                    <span class="msg_time_send">${time}</span>
+                </div>
+                <div class="img_cont_msg">
+                    <img src="https://i.ibb.co/d5b84Xw/Untitled-design.png"
+                         class="rounded-circle user_img_msg">
+                </div>
+            </div>`;
+        
+        $("#messageFormeight").append(userHTML);
+        $("#text").val("");
+
+        // 🔥 IMPORTANT: change endpoint to /chat (your Flask API)
+        $.ajax({
+            url: "/chat",
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({ question: userText }),
+            success: function(data) {
+
+                let botHTML = `
+                    <div class="d-flex justify-content-start mb-4">
+                        <div class="img_cont_msg">
+                            <!-- ✅ SAME AI LOGO -->
+                            <img src="https://cdn-icons-png.flaticon.com/512/4712/4712109.png"
+                                 class="rounded-circle user_img_msg">
+                        </div>
+                        <div class="msg_cotainer">
+                            ${data.answer}
+                            <span class="msg_time">${time}</span>
+                        </div>
+                    </div>`;
+
+                $("#messageFormeight").append(botHTML);
+            }
+        });
+    });
+});
+</script>
+
+</body>
+</html>
