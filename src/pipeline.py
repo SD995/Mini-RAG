@@ -27,6 +27,7 @@ def run_rag(query,retriever,llm):
     - Keep answer factual and short
     -Focus on pricing-related information when question is about pricing
     -Do NOT give partial answers
+    
     Context:
     {context}
 

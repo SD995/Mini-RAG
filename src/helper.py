@@ -6,7 +6,9 @@ from src.embeddings import get_embeddings
 from langchain_community.vectorstores import FAISS
 from sentence_transformers import CrossEncoder
 
-load_dotenv()  # Load environment variables from .env file
+load_dotenv()
+
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")# Load environment variables from .env file
 print("API key:",os.getenv("OPENROUTER_API_KEY"))  # Debug print to verify API key is loaded
 def clean_text(text):
     # 1. Normalize whitespace
@@ -71,14 +73,12 @@ def load_retriever():
 
 
 def get_llm():
-    client = ChatOpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=os.getenv("OPENROUTER_API_KEY"),
-        model="meta-llama/llama-3.1-8b-instruct",
-        temperature=0,
-    )
-    return client
-
+    return ChatOpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=OPENROUTER_API_KEY,
+    model="meta-llama/llama-3.1-8b-instruct",
+    temperature=0
+)
 
 reranker_model = None
 
