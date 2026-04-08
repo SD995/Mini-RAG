@@ -201,6 +201,11 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# Project runtime/generated or local app folders
+faiss_index/
+data/
+mini-rag-chatbot/
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
