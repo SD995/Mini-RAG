@@ -1,40 +1,24 @@
 import os
-from pdf2image import convert_from_path
-import pytesseract
 from langchain.schema import Document
-from src.helper import clean_text
 
-DATA_PATH = "data"
+DATA_PATH = "processed_text"
 
 def load_documents():
     documents = []
 
     for file in os.listdir(DATA_PATH):
-        if file.endswith(".pdf"):
+        if file.endswith(".txt"):
+            path = os.path.join(DATA_PATH, file)
 
-            pdf_path = os.path.join(DATA_PATH, file)
-            print(f"Processing: {file}")
+            with open(path, "r", encoding="utf-8") as f:
+                text = f.read()
 
-            # ⚠️ REMOVE poppler_path for deployment (Linux handles it)
-            images = convert_from_path(pdf_path)
+            documents.append(
+                Document(
+                    page_content=text,
+                    metadata={"source": file}
+                )
+            )
 
-            for i, image in enumerate(images):
-
-                text = pytesseract.image_to_string(image)
-
-                # ✅ USE YOUR CLEAN FUNCTION
-                text = clean_text(text)
-
-                if text:
-                    documents.append(
-                        Document(
-                            page_content=text,
-                            metadata={
-                                "source": file,
-                                "page": i
-                            }
-                        )
-                    )
-
-    print("Total documents:", len(documents))
+    print("Loaded docs:", len(documents))
     return documents

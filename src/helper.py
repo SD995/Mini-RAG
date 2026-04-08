@@ -1,3 +1,4 @@
+from http import client
 import re
 import os 
 from dotenv import load_dotenv
@@ -5,8 +6,9 @@ from langchain_openai import ChatOpenAI
 from src.embeddings import get_embeddings
 from langchain_community.vectorstores import FAISS
 from sentence_transformers import CrossEncoder
-
+import psutil
 load_dotenv()
+from langchain.embeddings.base import Embeddings
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")# Load environment variables from .env file
 print("API key:",os.getenv("OPENROUTER_API_KEY"))  # Debug print to verify API key is loaded
@@ -54,11 +56,33 @@ def clean_text(text):
     return text.strip()
 
 
+def log_memory(stage):
+    process =psutil.Process(os.getpid())
+    process_mem = process.memory_info().rss/(1024**2)  # Memory in MB
+    print(f"{stage} | App: {process_mem:.2f} MB",flush=True)
+
+def embed_text(texts):
+    response = client.embeddings.create(
+        model="text-embedding-3-small",  # or OpenRouter-supported model
+        input=texts
+    )
+    return [item.embedding for item in response.data]
+
+
+class ORWrapper(Embeddings):
+    def __init__(self, client):
+        self.client = client
+
+    def embed_documents(self, texts):
+        return self.client.embed_documents(texts)
+
+    def embed_query(self, text):
+        return self.client.embed_query(text)
 
 
 def load_retriever():
     try:
-        embedding = get_embeddings()
+        embedding = ORWrapper(get_embeddings())
         db = FAISS.load_local(
             "faiss_index",
             embedding,
@@ -85,9 +109,11 @@ reranker_model = None
 def get_reranker():
     global reranker_model
     if reranker_model is None:
+        log_memory("before loading reranker")
         reranker_model = CrossEncoder(
             "cross-encoder/ms-marco-MiniLM-L-6-v2"
         )
+        log_memory("after loading reranker")
     return reranker_model
 
 
