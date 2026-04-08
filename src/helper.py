@@ -3,12 +3,12 @@ import re
 import os 
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
-from src.embeddings import get_embeddings
+from src.embeddings import get_embeddings, ORWrapper
 from langchain_community.vectorstores import FAISS
 from sentence_transformers import CrossEncoder
 import psutil
+from src.build_index import build_index
 load_dotenv()
-from langchain.embeddings.base import Embeddings
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")# Load environment variables from .env file
 print("API key:",os.getenv("OPENROUTER_API_KEY"))  # Debug print to verify API key is loaded
@@ -69,28 +69,31 @@ def embed_text(texts):
     return [item.embedding for item in response.data]
 
 
-class ORWrapper(Embeddings):
-    def __init__(self, client):
-        self.client = client
-
-    def embed_documents(self, texts):
-        return self.client.embed_documents(texts)
-
-    def embed_query(self, text):
-        return self.client.embed_query(text)
-
-
 def load_retriever():
     try:
+        print(" Loading retriever...")
+
+        # Initialize embeddings
         embedding = ORWrapper(get_embeddings())
+
+        # Build FAISS if not exists
+        if not os.path.exists("faiss_index"):
+            print("FAISS index not found. Building...")
+            build_index()
+
+        # Load FAISS index
         db = FAISS.load_local(
             "faiss_index",
             embedding,
             allow_dangerous_deserialization=True
         )
+
+        print(" FAISS loaded successfully")
+
         return db.as_retriever(search_kwargs={"k": 7})
+
     except Exception as e:
-        print("Error loading FAISS:", e)
+        print(" Error loading FAISS:", e)
         raise
     
 

@@ -8,3 +8,7 @@ gunicorn
 requests
 tqdm
 psutil
+sentence-transformers
+transformers
+tokenizers
+langchain-openai==0.1.22

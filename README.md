@@ -8,8 +8,8 @@ A retrieval-augmented generation (RAG) system for an internal **construction mar
 
 | Requirement | Implementation |
 |-------------|----------------|
-| Chunk & embed documents | `RecursiveCharacterTextSplitter` (800 chars, 100 overlap); `sentence-transformers/all-MiniLM-L6-v2` |
-| Vector search | **FAISS** index (`faiss_index/`), top-`k` retrieval (`k=7`) |
+| Chunk & embed documents | `RecursiveCharacterTextSplitter` (800 chars, 100 overlap); OpenRouter embedding model `text-embedding-3-small` |
+| Vector search | **FAISS** top-`k` retrieval (`k=7`) with index built at app runtime |
 | LLM generation | **OpenRouter** — `meta-llama/llama-3.1-8b-instruct` (temperature `0`) |
 | Transparency | Strict prompt + research notebooks show **retrieved chunks** and **answers**; see [Transparency](#transparency-and-explainability) |
 | Chat UI | **Flask** backend + **Bootstrap** frontend (`templates/index.html`, `static/style.css`) |
@@ -20,11 +20,11 @@ Optional research work (see `research/`) compares **Ollama** (`phi3`) with OpenR
 
 ## Why these models?
 
-### Embedding model: `sentence-transformers/all-MiniLM-L6-v2`
+### Embedding model: OpenRouter `text-embedding-3-small`
 
-- Runs **locally** (no embedding API cost), fast to index, and widely used for semantic similarity.
-- Produces dense vectors compatible with **FAISS** inner-product search after LangChain’s normalization.
-- Balanced quality vs. speed for short internal documents and FAQ-style chunks.
+- Used for semantic vector generation in the OpenRouter-based embedding flow.
+- Provides API-based embedding support that integrates with the FAISS retrieval pipeline.
+- Suitable for lightweight, production-friendly runtime indexing.
 
 ### Reranker: `cross-encoder/ms-marco-MiniLM-L-6-v2`
 
@@ -50,7 +50,9 @@ Internal PDFs are treated as **image-based** exports (standard text loaders retu
 2. **Tesseract OCR** — `pytesseract.image_to_string` per page.  
 3. **`clean_text()`** (`src/helper.py`) — normalize whitespace, strip spurious Q/A patterns from OCR, fix common OCR artifacts (e.g. `saft` → `sqft`), and remove noisy symbols.  
 4. **Chunking** — `RecursiveCharacterTextSplitter` with `chunk_size=800`, `chunk_overlap=100`, separators `["\n\n", "\n", ".", " "]`.  
-5. **Embeddings** — one vector per chunk; index built with **FAISS** and saved under `faiss_index/`.
+5. **Embeddings** — one vector per chunk; index built with **FAISS** dynamically at app startup/runtime (not stored in the repository).
+
+Scanned PDF documents were converted into text using OCR before chunking and retrieval.
 
 This flow is exercised end-to-end in `research/trials.ipynb` and implemented for production indexing in `src/ingestion.py` + `src/build_index.py`.
 
@@ -125,13 +127,13 @@ Mini-RAG/
 │   └── pipeline.py        # run_rag()
 ├── templates/index.html   # Chat frontend
 ├── static/style.css
-├── data/                  # Place your PDFs here (not always committed)
-├── faiss_index/           # Generated vector store (after indexing)
+├── processed_text/         # OCR-converted text artifacts used for ingestion
 ├── research/
 │   ├── trials.ipynb       # Experiments, OCR, reranking, eval_data, results export
 │   ├── evaluation.ipynb   # RAGAS + comparison tables
 │   └── results.json       # Saved eval runs
-├── requirements_rag_pipeline.txt
+├── requirements.txt        # Main deployment/runtime dependencies
+├── requirements_trials.txt
 └── requirements_evaluation.txt
 ```
 
@@ -167,7 +169,7 @@ python -m venv .venv
 Install the RAG/runtime stack:
 
 ```bash
-pip install -r requirements_rag_pipeline.txt
+pip install -r requirements_trials.txt
 ```
 
 Add packages required by `app.py` and indexing (not all are listed in that file):
@@ -201,7 +203,7 @@ Place your PDFs under `data/`, then:
 python src/build_index.py
 ```
 
-This creates/updates `faiss_index/`. Re-run whenever `data/` changes.
+Embeddings are created and FAISS indexing happens at runtime when the app starts. Re-run indexing/startup whenever `data/` changes.
 
 ### 5. Start the web app
 
@@ -227,12 +229,37 @@ Open `research/trials.ipynb` or `research/evaluation.ipynb`. Ensure paths and `r
 
 ---
 
+## Live Demo
+
+Live app: `https://huggingface.co/spaces/subratad/mini-rag-chatbot`
+
+---
+
+## Deployment
+
+### Deploy on Hugging Face Spaces (Docker)
+
+1. Create a new Space on Hugging Face and select **Docker** as the SDK.
+2. Push this repository to GitHub.
+3. In your Space settings, connect the GitHub repository (or push files directly to the Space repo).
+4. Add repository secrets in Space settings:
+   - `OPENROUTER_API_KEY`
+5. Ensure your Docker image installs runtime dependencies:
+   - Python dependencies from `requirements.txt`
+   - System dependencies for OCR/PDF: **tesseract-ocr** and **poppler-utils**
+6. Configure the container start command to run the Flask app (for example with `gunicorn` or `python app.py`).
+7. On launch, the app loads documents, creates embeddings, and builds the FAISS index in memory/runtime.
+8. Memory consumption is improved for deployment by keeping retrieval state in-session only: runtime FAISS/embedding state is held in memory during execution and rebuilt on restart (no persisted FAISS memory store in the repository).
+9. Verify the app URL and test a few questions from your internal docs.
+
+---
+
 ## Deployment notes
 
 - Host any **WSGI-capable** Python platform (e.g. **Render**, **Railway**, **Fly.io**) or a small **VPS**.  
 - Set **`OPENROUTER_API_KEY`** in the provider’s secret/environment settings.  
 - Install **Tesseract** and **Poppler** on the server or switch ingestion to a PDF text layer if your documents are text-native (would simplify deployment).  
-- Commit or rebuild **`faiss_index/`** in CI, or run `build_index.py` at deploy time if `data/` is available in the image.  
+- FAISS index files are not committed to the repository; they are generated dynamically at runtime.  
 - For production, remove debug logging that prints secrets (e.g. avoid printing API keys in `helper.py`).
 
 ---
